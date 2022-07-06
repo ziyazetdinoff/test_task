@@ -1,0 +1,6 @@
+sqlalchemy
+geoalchemy2
+openpyxl
+pandas
+sqlalchemy_utils
+psycopg2
