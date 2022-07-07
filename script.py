@@ -37,6 +37,6 @@ def form_answer():
     answer['Название Остановки'] = [x[1] for x in xs]
     answer['Расстояние до остановки'] = [x[2] for x in xs]
     z = pd.DataFrame(answer)
-    z.to_excel("final_table3.xlsx", index=False)
+    z.to_excel("final_table.xlsx", index=False)
 
 
