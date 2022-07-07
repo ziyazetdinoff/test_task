@@ -12,6 +12,11 @@ import config
 
 base = declarative_base()
 
+'''Таблица остановка
+    name - название остановки
+    longitude - долгота
+    latitude - ширина
+    geodata_center - точка, с координатами'''
 
 class Station(base):
     __tablename__ = 'stations'
@@ -22,6 +27,11 @@ class Station(base):
     geodata_center = Column(Geometry('POINT'))
 
 
+'''Таблица ЖК
+    name - название ЖК
+    geodata_center - точка, с координатами'''
+
+
 class Apartment(base):
     __tablename__ = 'apartments'
 
@@ -30,16 +40,18 @@ class Apartment(base):
     geodata_center = Column(Geometry('POINT'))
 
 
+# Данные для подключения к БД
 username = config.username
 password = config.password
 database = config.database
 host = config.host
 port = config.port
 
-
+# Соедение с БД
 connection_string = f'postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}'
 engine = create_engine(connection_string, echo=False)
 
+# Обработка случая существования и несуществования БД
 if database_exists(connection_string):
     print(f'Database exists: {database_exists(engine.url)}')
 else:
@@ -48,7 +60,7 @@ else:
 
 session = Session(bind=engine, autoflush=False)
 
-
+# Создание и заполнение БД
 def create_db():
     delete_tables()
     base.metadata.create_all(engine)
@@ -70,12 +82,14 @@ def create_db():
         session.commit()
 
 
+# Удаление таблиц
 def delete_tables():
     session.commit()
     Station.__table__.drop(engine, checkfirst=True)
     Apartment.__table__.drop(engine, checkfirst=True)
 
 
+# Получение данных о ЖК из БД
 def get_dict_apartments() -> dict:
     response = session.query(Apartment.name, Apartment.geodata_center).all()
     dct = {}
@@ -85,6 +99,7 @@ def get_dict_apartments() -> dict:
     return dct
 
 
+# Получение данных об остановках из БД
 def get_dict_stations() -> dict:
     response = session.query(Station.name, Station.geodata_center).all()
     dct = {}
