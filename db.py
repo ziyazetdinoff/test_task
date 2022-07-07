@@ -1,10 +1,11 @@
-from sqlalchemy import Column, Integer, Float, Date, Boolean, String, ForeignKey
+from sqlalchemy import Column, Integer, Float, String
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
 from geoalchemy2 import Geometry
 import pandas as pd
+from shapely import wkb
 
 import config
 
@@ -15,50 +16,18 @@ base = declarative_base()
 class Station(base):
     __tablename__ = 'stations'
     id = Column(Integer, primary_key=True)
-    id_station = Column(Integer)
-    name = Column(String(100))
+    name = Column(String(200))
     longitude = Column(Float)
     latitude = Column(Float)
-    Street = Column(String(100))
-    adm_area = Column(String(100))
-    district = Column(String(100))
-    route_numbers = Column(String(100))
-    station_name = Column(String(100))
-    pavilion = Column(Boolean)
-    operating_org_name = Column(String(100))
-    entry_state = Column(String(100))
-    global_id = Column(Integer)
     geodata_center = Column(Geometry('POINT'))
-
-    '''def __init__(self, name, begin_date, end_date):
-        self.name = name
-        self.begin_date = begin_date
-        self.end_date = end_date
-
-    def __repr__(self):
-        return f"<Stocks(name={self.name}, " \
-               f"begin_date={self.begin_date}," \
-               f" end_date={self.end_date})>" '''
 
 
 class Apartment(base):
     __tablename__ = 'apartments'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(100))
+    name = Column(String(200))
     geodata_center = Column(Geometry('POINT'))
-
-    '''def __init__(self, name, all_period, from_date, till_date):
-        self.name = name
-        self.all_period = all_period
-        self.from_date = from_date
-        self.till_date = till_date
-
-    def __repr_(self):
-        return f"Database(name={self.name}, " \
-               f"all_period={self.all_period}" \
-               f"from_date={self.from_date}, " \
-               f"till_date={self.till_date})" '''
 
 
 username = config.username
@@ -81,9 +50,46 @@ session = Session(bind=engine, autoflush=False)
 
 
 def create_db():
+    delete_tables()
     base.metadata.create_all(engine)
+    data_apartments = pd.read_excel('apartments.xlsx')
+    data_stations = pd.read_excel('stations.xlsx')
+    mas_stations = data_stations.reset_index().values.tolist()
+    for i in range(len(mas_stations)):
+        mas_stations[i].append('POINT(' + str(mas_stations[i][2]) + ' ' + str(mas_stations[i][3]) + ')')
+        session.add(Station(name=mas_stations[i][1],
+                            longitude=mas_stations[i][2],
+                            latitude=mas_stations[i][3],
+                            geodata_center=mas_stations[i][4]))
+        session.commit()
+
+    mas_apartments = data_apartments.reset_index().values.tolist()
+    for i in range(len(mas_apartments)):
+        session.add(Apartment(name=mas_apartments[i][1],
+                              geodata_center=mas_apartments[i][2]))
+        session.commit()
 
 
-data_stations = pd.read_excel('stations.xlsx')
-data_stations.to_sql("stations", )
+def delete_tables():
+    session.commit()
+    Station.__table__.drop(engine, checkfirst=True)
+    Apartment.__table__.drop(engine, checkfirst=True)
 
+
+def get_dict_apartments() -> dict:
+    response = session.query(Apartment.name, Apartment.geodata_center).all()
+    dct = {}
+    for row in response:
+        point = wkb.loads(bytes(row.geodata_center.data))
+        dct[row.name] = [point.x, point.y]
+    return dct
+
+
+def get_dict_stations() -> dict:
+    response = session.query(Station.name, Station.geodata_center).all()
+    dct = {}
+    for row in response:
+        point = wkb.loads(bytes(row.geodata_center.data))
+        dct[row.name] = [point.x, point.y]
+    session.commit()
+    return dct

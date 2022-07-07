@@ -4,3 +4,5 @@ openpyxl
 pandas
 sqlalchemy_utils
 psycopg2
+geopy
+shapely
